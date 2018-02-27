@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 import re
+import bcrypt
 from django.db import models
 
 # Create your models here.
@@ -22,6 +23,29 @@ class UserManager(models.Manager):
 			errors['cpword'] = 'Passwords dont match'
 		if User.objects.filter(email = postData['email'].lower()).exists():
 			errors['exists'] = 'Email already used'
+		if len(errors) == 0:
+			pw = bcrypt.hashpw(postData['pword'].encode(), bcrypt.gensalt())
+			a = User.objects.create(fname = postData['fname'], lname = postData['lname'],
+				email= postData['email'].lower(), pword = pw)
+			errors['a'] = postData['fname']
+		return errors
+
+	def login_validator(self,postData):
+		EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9.+_-]+@[a-zA-Z0-9._-]+\.[a-zA-Z]+$')
+		errors = {}
+		if len(postData['email']) < 1:
+			errors['email'] = 'Email field left blank!'
+		if len(postData['pword1']) < 1:
+			errors['pword1'] = 'Password field left blank!'
+		if len(errors) == 0:
+			if User.objects.filter(email = postData['email']).exists():
+				a = User.objects.get(email = postData['email'])
+				if bcrypt.checkpw(postData['pword1'].encode(), a.pword.encode()):
+					errors['a'] = a.fname
+				else:
+					errors['credentials'] = "Wrong Credentials"
+			else:
+				errors['credentials'] = "Wrong Credentials"
 		return errors
 class User(models.Model):
 	"""docstring for User"""
